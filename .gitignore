@@ -1,4 +1,16 @@
-credentials
+# .gitignore
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment Variables
 .env
-__pycache__
+
+# Credentials
+credentials/
+
+# Database
+study_scheduler.db
+
 __init__.py
