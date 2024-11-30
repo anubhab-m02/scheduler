@@ -1,1 +1,15 @@
 streamlit
+pandas
+plotly
+sqlalchemy
+authlib
+nltk
+textblob
+bcrypt
+APScheduler
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+todoist-python
+python-dotenv
+pytz
