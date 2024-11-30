@@ -8,7 +8,7 @@ from db.db_utils import (
     join_study_group, add_resource,
     add_feedback, SessionLocal
 )
-from db.db_models import Course  # Added import for Course
+from db.db_models import StudySession, Course  # Importing StudySession and Course models
 from integrations.calendar_sync import sync_to_google_calendar
 from integrations.todoist_sync import sync_to_todoist
 from integrations.notifications import send_upcoming_session_notifications
@@ -23,8 +23,6 @@ import plotly.express as px
 from datetime import datetime, timedelta, time
 import pytz
 import os
-
-
 
 # Initialize the scheduler
 if 'scheduler_started' not in st.session_state:
@@ -234,7 +232,7 @@ else:
         #     session.close()
         #     return courses
 
-        user_courses = get_user_courses_display(st.session_state.user.id)
+        user_courses = get_user_courses(st.session_state.user.id)
 
         # Display added courses
         if user_courses:
