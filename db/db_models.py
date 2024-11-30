@@ -48,15 +48,14 @@ class Course(Base):
     study_sessions = relationship("StudySession", back_populates="course")
 
 class StudySession(Base):
-    __tablename__ = 'study_sessions'
-    id = Column(Integer, primary_key=True)
-    course_id = Column(Integer, ForeignKey('courses.id'))
-    start_time = Column(DateTime, nullable=False)
-    duration = Column(Float, nullable=False)  # Duration in hours
+    __tablename__ = "study_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("courses.id"))
+    start_time = Column(DateTime)
+    duration = Column(Float)  # Duration in hours
     completed = Column(Boolean, default=False)
     skipped = Column(Boolean, default=False)
     rescheduled = Column(Boolean, default=False)
-
     course = relationship("Course", back_populates="study_sessions")
 
 class StudyGroup(Base):
