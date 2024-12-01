@@ -563,16 +563,23 @@ else:
 
         # Recommendations
         def display_recommendations(user_id):
-            from analytics.suggestions import generate_suggestions
             suggestions = generate_suggestions(user_id)
             if suggestions:
                 st.subheader("🤖 Recommended Study Times")
                 for idx, time_hour in enumerate(suggestions, 1):
-                    hour = int(time_hour)
-                    minute = int((time_hour - hour) * 60)
-                    period = "AM" if hour < 12 else "PM"
-                    display_hour = hour if 1 <= hour <= 12 else hour - 12 if hour > 12 else 12
-                    st.write(f"{idx}. {display_hour}:{minute:02d} {period}")
+                    if isinstance(time_hour, (int, float)):
+                        try:
+                            hour = int(time_hour)
+                            minute = int((time_hour - hour) * 60)
+                            period = "AM" if hour < 12 else "PM"
+                            display_hour = hour if 1 <= hour <= 12 else hour - 12 if hour > 12 else 12
+                            st.write(f"{idx}. {display_hour}:{minute:02d} {period}")
+                        except ValueError:
+                            st.warning(f"{idx}. Invalid time format: {time_hour}")
+                    elif isinstance(time_hour, str):
+                        st.info(f"{idx}. {time_hour}")
+                    else:
+                        st.warning(f"{idx}. Unknown suggestion type.")
             else:
                 st.info("Provide more completed study sessions to receive study time recommendations.")
 
