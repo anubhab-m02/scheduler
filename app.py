@@ -6,7 +6,7 @@ from db.db_utils import (
     add_course, get_user_courses,
     add_study_session, create_study_group,
     join_study_group, add_resource,
-    add_feedback, SessionLocal
+    add_feedback, SessionLocal, delete_course
 )
 from db.db_models import User, Course, StudySession, Feedback, Resource, StudyGroup
 from integrations.calendar_sync import sync_to_google_calendar
@@ -238,14 +238,39 @@ else:
         if user_courses:
             st.header("📋 Courses Added")
             courses_data = {
+                "Course ID": [course.id for course in user_courses],
                 "Course Name": [course.name for course in user_courses],
                 "Deadline": [course.deadline.strftime("%Y-%m-%d") for course in user_courses],
                 "Hours/Week": [course.hours_per_week for course in user_courses],
                 "Priority": [ {1: "High", 2: "Medium", 3: "Low"}[course.priority] for course in user_courses]
             }
-            st.table(pd.DataFrame(courses_data))
-        else:
-            st.info("No courses added yet. Use the sidebar to add your courses.")
+            df_courses = pd.DataFrame(courses_data)
+            st.table(df_courses)
+
+            # Section to Delete Courses
+            st.subheader("🗑️ Delete Courses")
+            # Create options in the format "Course Name (ID)"
+            delete_options = [f"{course.name} (ID: {course.id})" for course in user_courses]
+            selected_courses = st.multiselect("Select courses to delete:", options=delete_options)
+
+            if st.button("Delete Selected Courses"):
+                if selected_courses:
+                    for course_option in selected_courses:
+                        # Extract course ID from the option string
+                        course_id = int(course_option.split("ID: ")[1].rstrip(")"))
+                        success = delete_course(user_id=st.session_state.user.id, course_id=course_id)
+                        if success:
+                            st.success(f"Deleted course: {course_option.split(' (ID:')[0]}")
+                        else:
+                            st.error(f"Failed to delete course: {course_option.split(' (ID:')[0]}")
+                    # Refresh the courses list after deletion
+                    user_courses = get_user_courses(st.session_state.user.id)
+                    st.rerun()
+            else:
+                st.warning("No courses selected for deletion.")
+
+    else:
+        st.info("No courses added yet. Use the sidebar to add your courses.")
 
         st.header("🗓️ Define Study Period")
         with st.form("study_period_form"):

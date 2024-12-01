@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.exc import SQLAlchemyError
 from .db_models import Base, User, Course, StudySession, StudyGroup, Resource, Feedback
 import bcrypt
 
@@ -106,3 +107,31 @@ def add_feedback(user_id, content, sentiment):
     session.commit()
     session.close()
     return feedback
+
+def delete_course(user_id: int, course_id: int) -> bool:
+    """
+    Delete a course from the database.
+
+    Args:
+        user_id (int): The ID of the user requesting the deletion.
+        course_id (int): The ID of the course to be deleted.
+
+    Returns:
+        bool: True if deletion was successful, False otherwise.
+    """
+    session = SessionLocal()
+    try:
+        # Retrieve the course ensuring it belongs to the user
+        course = session.query(Course).filter(Course.id == course_id, Course.user_id == user_id).first()
+        if course:
+            session.delete(course)
+            session.commit()
+            return True
+        else:
+            return False  # Course not found or does not belong to the user
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Error deleting course: {e}")
+        return False
+    finally:
+        session.close()
