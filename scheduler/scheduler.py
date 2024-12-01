@@ -1,14 +1,24 @@
 # scheduler/scheduler.py
 from apscheduler.schedulers.background import BackgroundScheduler
 from integrations.notifications import send_upcoming_session_notifications
+from apscheduler.triggers.interval import IntervalTrigger
 from db.db_utils import SessionLocal, User
 from datetime import datetime, timedelta, time
 import streamlit as st
+import pytz
 
 def start_scheduler():
-    scheduler = BackgroundScheduler(timezone="UTC")
-    scheduler.add_job(check_and_send_notifications, 'interval', minutes=30)
+    scheduler = BackgroundScheduler(timezone=pytz.UTC)
+    trigger = IntervalTrigger(minutes=30)
+    scheduler.add_job(
+        check_and_send_notifications,
+        trigger=trigger,
+        id='check_and_send_notifications',
+        name='Check and Send Notifications',
+        replace_existing=True
+    )
     scheduler.start()
+
 
 def check_and_send_notifications():
     session = SessionLocal()

@@ -443,7 +443,7 @@ else:
             try:
                 with SessionLocal() as session:
                     # Eagerly load the 'course' relationship using joinedload
-                    sessions = session.query(StudySession).options(joinedload(StudySession.course)).filter(
+                    sessions = session.query(StudySession).options(joinedload(StudySession.course)).join(Course).filter(
                         Course.user_id == user_id
                     ).all()
 
