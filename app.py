@@ -249,7 +249,7 @@ else:
 
             # Section to Delete Courses
             st.subheader("🗑️ Delete Courses")
-            # Create options in the format "Course Name (ID)"
+            # Create options in the format "Course Name (ID: course.id)"
             delete_options = [f"{course.name} (ID: {course.id})" for course in user_courses]
             selected_courses = st.multiselect("Select courses to delete:", options=delete_options)
 
@@ -257,7 +257,12 @@ else:
                 if selected_courses:
                     for course_option in selected_courses:
                         # Extract course ID from the option string
-                        course_id = int(course_option.split("ID: ")[1].rstrip(")"))
+                        try:
+                            course_id_str = course_option.split("ID: ")[1].rstrip(")")
+                            course_id = int(course_id_str)
+                        except (IndexError, ValueError):
+                            st.error(f"Invalid course selection: {course_option}")
+                            continue
                         success = delete_course(user_id=st.session_state.user.id, course_id=course_id)
                         if success:
                             st.success(f"Deleted course: {course_option.split(' (ID:')[0]}")
@@ -266,11 +271,10 @@ else:
                     # Refresh the courses list after deletion
                     user_courses = get_user_courses(st.session_state.user.id)
                     st.rerun()
-            else:
-                st.warning("No courses selected for deletion.")
-
-    else:
-        st.info("No courses added yet. Use the sidebar to add your courses.")
+                else:
+                    st.warning("No courses selected for deletion.")
+        else:
+            st.info("No courses added yet. Use the sidebar to add your courses.")
 
         st.header("🗓️ Define Study Period")
         with st.form("study_period_form"):
