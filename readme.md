@@ -19,7 +19,7 @@ This project is a personalized study scheduler application that integrates with 
 1. Clone the repository:
     ```sh
     git clone https://github.com/anubhab-m02/scheduler.git
-    cd study-scheduler
+    cd scheduler
     ```
 
 2. Create a virtual environment and activate it:
