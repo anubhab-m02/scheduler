@@ -9,6 +9,7 @@ from db.db_utils import (
     add_feedback, SessionLocal, delete_course
 )
 from db.db_models import User, Course, StudySession, Feedback, Resource, StudyGroup
+from sqlalchemy.orm import joinedload
 from integrations.calendar_sync import sync_to_google_calendar
 from integrations.todoist_sync import sync_to_todoist
 from integrations.notifications import send_upcoming_session_notifications
@@ -16,7 +17,7 @@ from gamification.gamification import assign_badges, display_badges
 from analytics.suggestions import generate_suggestions
 from analytics.sentiment_analysis import analyze_sentiment
 from nlp.nlp_input import parse_course_input
-from scheduler.scheduler import start_scheduler
+from scheduler.scheduler import start_scheduler, check_and_send_notifications, create_study_schedule
 from utils.helpers import format_datetime
 import pandas as pd
 import plotly.express as px
@@ -363,22 +364,33 @@ else:
             return schedule
 
         # Display Study Schedule with Interactive Calendar View
+        
         def display_study_schedule(user_id):
             session = SessionLocal()
-            sessions = session.query(StudySession).join(Course).filter(
-                Course.user_id == user_id
-            ).all()
-            session.close()
+            try:
+                # Eagerly load the 'course' relationship using joinedload
+                sessions = session.query(StudySession).options(joinedload(StudySession.course)).filter(
+                    Course.user_id == user_id
+                ).all()
 
-            if sessions:
-                schedule_data = {
-                    "Course": [s.course.name for s in sessions],
-                    "Start Time": [s.start_time for s in sessions],
-                    "End Time": [s.start_time + timedelta(hours=s.duration) for s in sessions],
-                    "Completed": [s.completed for s in sessions]
-                }
-                df_schedule = pd.DataFrame(schedule_data)
+                if sessions:
+                    schedule_data = {
+                        "Course": [s.course.name for s in sessions],
+                        "Start Time": [s.start_time for s in sessions],
+                        "End Time": [s.start_time + timedelta(hours=s.duration) for s in sessions],
+                        "Completed": [s.completed for s in sessions]
+                    }
+                    df_schedule = pd.DataFrame(schedule_data)
+                else:
+                    df_schedule = pd.DataFrame()
 
+            except Exception as e:
+                st.error(f"Error fetching study sessions: {e}")
+                df_schedule = pd.DataFrame()
+            finally:
+                session.close()
+
+            if not df_schedule.empty:
                 # Create Gantt Chart using Plotly
                 fig = px.timeline(
                     df_schedule,
