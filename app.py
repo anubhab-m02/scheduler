@@ -573,6 +573,7 @@ else:
                             st.success("Great to hear you're feeling good! Keep up the positive energy!")
                         else:
                             st.info("Thank you for your feedback!")
+        collect_feedback(st.session_state.user.id)
 
         def display_feedback(user_id):
             feedbacks = get_user_feedbacks(user_id)
@@ -658,6 +659,8 @@ else:
                     st.info("Your feedback is balanced. Keep tracking your study sessions to maintain or improve your study habits.")
             else:
                 st.info("No feedback submitted yet.")
+                
+        display_feedback(st.session_state.user.id)
 
         def edit_feedback(user_id, feedback_id, current_content):
             st.subheader(f"✏️ Edit Feedback ID: {feedback_id}")
