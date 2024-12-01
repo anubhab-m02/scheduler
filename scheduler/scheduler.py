@@ -1,4 +1,3 @@
-# scheduler/scheduler.py
 from apscheduler.schedulers.background import BackgroundScheduler
 from integrations.notifications import send_upcoming_session_notifications
 from apscheduler.triggers.interval import IntervalTrigger

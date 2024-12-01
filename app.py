@@ -1,5 +1,3 @@
-# app.py
-
 import streamlit as st
 from db.db_utils import (
     create_user, get_user, verify_password,

@@ -1,4 +1,3 @@
-# integrations/notifications.py
 import smtplib
 from email.mime.text import MIMEText
 from db.db_utils import SessionLocal

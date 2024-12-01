@@ -1,4 +1,3 @@
-# utils/helpers.py
 import pytz
 from datetime import datetime
 

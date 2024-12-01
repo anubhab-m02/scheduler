@@ -1,4 +1,3 @@
-# db/db_models.py
 from sqlalchemy import (
     Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Table
 )

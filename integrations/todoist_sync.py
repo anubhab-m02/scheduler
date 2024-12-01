@@ -1,4 +1,3 @@
-# integrations/todoist_sync.py
 import todoist
 from db.db_utils import SessionLocal
 from db.db_models import StudySession, Course
