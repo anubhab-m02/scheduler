@@ -4,7 +4,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 Base = declarative_base()
 
@@ -79,11 +79,12 @@ class Resource(Base):
     user = relationship("User", back_populates="resources")
 
 class Feedback(Base):
-    __tablename__ = 'feedback'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
+    __tablename__ = "feedbacks"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     content = Column(String, nullable=False)
-    sentiment = Column(Float, nullable=False)  # Polarity score
-    timestamp = Column(DateTime, default=datetime.utcnow)
-
+    sentiment = Column(Float, nullable=False)
+    sentiment_label = Column(String, nullable=False)
+    emotions = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=datetime.now(timezone.utc))    
     user = relationship("User", back_populates="feedbacks")

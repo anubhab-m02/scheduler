@@ -6,7 +6,9 @@ from db.db_utils import (
     add_course, get_user_courses,
     add_study_session, create_study_group,
     join_study_group, add_resource,
-    add_feedback, SessionLocal, delete_course
+    add_feedback, SessionLocal, delete_course,
+    add_feedback, get_user_feedbacks, 
+    update_feedback, remove_feedback
 )
 from db.db_models import User, Course, StudySession, Feedback, Resource, StudyGroup
 from sqlalchemy.orm import joinedload
@@ -15,12 +17,13 @@ from integrations.todoist_sync import sync_to_todoist
 from integrations.notifications import send_upcoming_session_notifications
 from gamification.gamification import assign_badges, display_badges
 from analytics.suggestions import generate_suggestions
-from analytics.sentiment_analysis import analyze_sentiment
+from analytics.sentiment_analysis import analyze_sentiment, analyze_emotions
 from nlp.nlp_input import parse_course_input
 from scheduler.scheduler import start_scheduler, check_and_send_notifications, create_study_schedule
 from utils.helpers import format_datetime
 import pandas as pd
 import plotly.express as px
+import json
 from datetime import datetime, timedelta, time
 import pytz
 import os
@@ -542,38 +545,142 @@ else:
         def collect_feedback(user_id):
             st.subheader("📝 Submit Feedback or Journal Entry")
             with st.form("feedback_form"):
-                feedback = st.text_area("Your Feedback/Journal Entry")
+                feedback = st.text_area("Your Feedback/Journal Entry", height=150)
                 submitted_feedback = st.form_submit_button("Submit")
                 if submitted_feedback:
                     if feedback.strip() == "":
                         st.error("Feedback cannot be empty.")
                     else:
-                        sentiment = analyze_sentiment(feedback)
-                        add_feedback(user_id, feedback, sentiment)
+                        # Perform sentiment and emotion analysis
+                        sentiment_results = analyze_sentiment(feedback)
+                        emotions = analyze_emotions(feedback)
+                        
+                        # Store feedback with sentiment and emotions
+                        add_feedback(
+                            user_id=user_id,
+                            content=feedback,
+                            sentiment=sentiment_results['compound'],
+                            sentiment_label=sentiment_results['sentiment'],
+                            emotions=emotions,
+                            timestamp=datetime.utcnow()
+                        )
                         st.success("Feedback submitted successfully!")
+                        
                         # Provide suggestions based on sentiment
-                        if sentiment < -0.5:
+                        if sentiment_results['compound'] < -0.5:
                             st.warning("It seems you're feeling stressed. Consider taking a short break or practicing relaxation techniques.")
-                        elif sentiment > 0.5:
+                        elif sentiment_results['compound'] > 0.5:
                             st.success("Great to hear you're feeling good! Keep up the positive energy!")
                         else:
                             st.info("Thank you for your feedback!")
 
         def display_feedback(user_id):
-            session_db = SessionLocal()
-            feedbacks = session_db.query(Feedback).filter(Feedback.user_id == user_id).order_by(Feedback.timestamp.desc()).all()
-            session_db.close()
-
+            feedbacks = get_user_feedbacks(user_id)
+            
             st.subheader("📊 Your Feedback History")
             if feedbacks:
+                # Prepare data for visualization
+                data = []
                 for fb in feedbacks:
-                    sentiment_label = "Positive" if fb.sentiment > 0 else "Negative" if fb.sentiment < 0 else "Neutral"
-                    st.write(f"- **{fb.content}** (*{sentiment_label}*)")
+                    emotions = json.loads(fb.emotions) if fb.emotions else {}
+                    data.append({
+                        "ID": fb.id,
+                        "Content": fb.content,
+                        "Sentiment Score": fb.sentiment,
+                        "Sentiment": fb.sentiment_label,
+                        "Emotions": emotions,
+                        "Timestamp": fb.timestamp
+                    })
+                
+                df_feedback = pd.DataFrame(data)
+                
+                # Display Feedback Entries with Options to Edit/Delete
+                st.dataframe(df_feedback[['ID', 'Content', 'Sentiment', 'Emotions', 'Timestamp']].sort_values(by='Timestamp', ascending=False))
+                
+                # Interactive Controls to Edit/Delete Feedback
+                for index, row in df_feedback.iterrows():
+                    st.markdown(f"**Feedback ID:** {row['ID']}")
+                    st.write(f"**Content:** {row['Content']}")
+                    st.write(f"**Sentiment:** {row['Sentiment']} (Score: {row['Sentiment Score']})")
+                    st.write(f"**Emotions:** {row['Emotions']}")
+                    st.write(f"**Submitted At:** {row['Timestamp']}")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button(f"Edit Feedback {row['ID']}"):
+                            edit_feedback(user_id, row['ID'], row['Content'])
+                    with col2:
+                        if st.button(f"Delete Feedback {row['ID']}"):
+                            delete_feedback(user_id, row['ID'])
+                            st.experimental_rerun()
+                    
+                    st.markdown("---")
+                
+                # Visualize Sentiment Distribution
+                st.markdown("### Sentiment Distribution")
+                sentiment_counts = df_feedback['Sentiment'].value_counts().reset_index()
+                sentiment_counts.columns = ['Sentiment', 'Count']
+                fig_sentiment = px.pie(sentiment_counts, names='Sentiment', values='Count', title='Sentiment Distribution')
+                st.plotly_chart(fig_sentiment, use_container_width=True)
+                
+                # Visualize Sentiment Over Time
+                st.markdown("### Sentiment Over Time")
+                df_feedback['Date'] = df_feedback['Timestamp'].dt.date
+                sentiment_over_time = df_feedback.groupby('Date')['Sentiment Score'].mean().reset_index()
+                fig_trend = px.line(sentiment_over_time, x='Date', y='Sentiment Score', title='Average Sentiment Over Time', markers=True)
+                fig_trend.add_hline(y=0, line_dash="dash", line_color="red")
+                st.plotly_chart(fig_trend, use_container_width=True)
+                
+                # Visualize Emotion Distribution
+                st.markdown("### Emotion Distribution")
+                all_emotions = {}
+                for emotions in df_feedback['Emotions']:
+                    for emotion, score in emotions.items():
+                        all_emotions[emotion] = all_emotions.get(emotion, 0) + score
+                if all_emotions:
+                    df_emotions = pd.DataFrame(list(all_emotions.items()), columns=['Emotion', 'Total Score'])
+                    fig_emotions = px.bar(df_emotions, x='Emotion', y='Total Score', title='Total Emotion Scores', color='Emotion')
+                    st.plotly_chart(fig_emotions, use_container_width=True)
+                
+                # Provide actionable insights based on feedback
+                st.markdown("### Insights")
+                positive_feedback = df_feedback[df_feedback['Sentiment'] == 'Positive']
+                negative_feedback = df_feedback[df_feedback['Sentiment'] == 'Negative']
+                
+                st.write(f"**Total Positive Feedback:** {len(positive_feedback)}")
+                st.write(f"**Total Negative Feedback:** {len(negative_feedback)}")
+                
+                if len(negative_feedback) > len(positive_feedback):
+                    st.warning("It seems you've had more negative experiences recently. Consider reviewing your study habits or taking breaks to improve your well-being.")
+                elif len(positive_feedback) > len(negative_feedback):
+                    st.success("Great job! You've had more positive experiences. Keep up the good work!")
+                else:
+                    st.info("Your feedback is balanced. Keep tracking your study sessions to maintain or improve your study habits.")
             else:
                 st.info("No feedback submitted yet.")
 
-        collect_feedback(st.session_state.user.id)
-        display_feedback(st.session_state.user.id)
+        def edit_feedback(user_id, feedback_id, current_content):
+            st.subheader(f"✏️ Edit Feedback ID: {feedback_id}")
+            new_content = st.text_area("Update Your Feedback/Journal Entry", value=current_content, height=150)
+            if st.button("Save Changes"):
+                if new_content.strip() == "":
+                    st.error("Feedback cannot be empty.")
+                else:
+                    # Re-analyze sentiment and emotions
+                    sentiment_results = analyze_sentiment(new_content)
+                    emotions = analyze_emotions(new_content)
+                    
+                    # Update feedback in the database
+                    update_feedback(user_id, feedback_id, new_content, sentiment_results, emotions)
+                    st.success("Feedback updated successfully!")
+                    st.experimental_rerun()
+
+        def delete_feedback(user_id, feedback_id):
+            result = remove_feedback(user_id, feedback_id)
+            if result:
+                st.success("Feedback deleted successfully!")
+            else:
+                st.error("Failed to delete feedback.")
 
         # Display Resources
         def display_resources(user_id):
