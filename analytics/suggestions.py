@@ -1,6 +1,6 @@
 # analytics/suggestions.py
 from db.db_utils import SessionLocal
-from db.db_models import StudySession, User
+from db.db_models import StudySession, User, Course
 
 def generate_suggestions(user_id):
     session = SessionLocal()

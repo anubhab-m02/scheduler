@@ -2,6 +2,7 @@
 from db.db_utils import SessionLocal
 from db.db_models import StudySession, User
 from sqlalchemy import func
+import streamlit as st
 
 def assign_badges(user_id):
     session = SessionLocal()
