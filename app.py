@@ -440,47 +440,52 @@ else:
             session_db.close()
 
         def display_study_sessions(user_id):
-            session_db = SessionLocal()
-            sessions = session_db.query(StudySession).join(Course).filter(
-                Course.user_id == user_id
-            ).all()
-            session_db.close()
+            try:
+                with SessionLocal() as session:
+                    # Eagerly load the 'course' relationship using joinedload
+                    sessions = session.query(StudySession).options(joinedload(StudySession.course)).filter(
+                        Course.user_id == user_id
+                    ).all()
 
-            if sessions:
-                df_sessions = pd.DataFrame({
-                    "Session ID": [s.id for s in sessions],
-                    "Course": [s.course.name for s in sessions],
-                    "Start Time": [format_datetime(s.start_time, st.session_state.user.timezone) for s in sessions],
-                    "Duration (hrs)": [s.duration for s in sessions],
-                    "Completed": [s.completed for s in sessions],
-                    "Skipped": [s.skipped for s in sessions],
-                    "Rescheduled": [s.rescheduled for s in sessions]
-                })
+                    if sessions:
+                        schedule_data = {
+                            "Session ID": [s.id for s in sessions],
+                            "Course": [s.course.name for s in sessions],
+                            "Start Time": [s.start_time for s in sessions],
+                            "Duration (hrs)": [s.duration for s in sessions],
+                            "Completed": [s.completed for s in sessions],
+                            "Skipped": [s.skipped for s in sessions],
+                            "Rescheduled": [s.rescheduled for s in sessions]
+                        }
+                        df_sessions = pd.DataFrame(schedule_data)
+                    else:
+                        df_sessions = pd.DataFrame()
 
-                st.subheader("📝 Study Session Log")
-                st.dataframe(df_sessions)
+                if not df_sessions.empty:
+                    st.subheader("📝 Study Session Log")
+                    st.dataframe(df_sessions)
 
-                # Interactive controls to update session status
-                for session_obj in sessions:
-                    if not (session_obj.completed or session_obj.skipped or session_obj.rescheduled):
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            if st.button(f"✅ Mark Completed {session_obj.id}"):
-                                mark_session(session_obj.id, "Completed")
-                                assign_badges(user_id)
-                                st.experimental_rerun()
-                        with col2:
-                            if st.button(f"❌ Mark Skipped {session_obj.id}"):
-                                mark_session(session_obj.id, "Skipped")
-                                st.experimental_rerun()
-                        with col3:
-                            if st.button(f"🔄 Mark Rescheduled {session_obj.id}"):
-                                mark_session(session_obj.id, "Rescheduled")
-                                st.experimental_rerun()
-            else:
-                st.info("No study sessions logged yet.")
-
-        display_study_sessions(st.session_state.user.id)
+                    # Interactive controls to update session status
+                    for s in sessions:
+                        if not (s.completed or s.skipped or s.rescheduled):
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                if st.button(f"✅ Mark Completed {s.id}"):
+                                    mark_session(s.id, "Completed")
+                                    assign_badges(user_id)
+                                    st.experimental_rerun()
+                            with col2:
+                                if st.button(f"❌ Mark Skipped {s.id}"):
+                                    mark_session(s.id, "Skipped")
+                                    st.experimental_rerun()
+                            with col3:
+                                if st.button(f"🔄 Mark Rescheduled {s.id}"):
+                                    mark_session(s.id, "Rescheduled")
+                                    st.experimental_rerun()
+                else:
+                    st.info("No study sessions logged yet.")
+            except Exception as e:
+                st.error(f"Error displaying study sessions: {e}")
 
         # Performance Metrics
         def display_performance_metrics(user_id):
