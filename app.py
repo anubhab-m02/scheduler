@@ -26,14 +26,14 @@ from datetime import datetime, timedelta, time
 import pytz
 import os
 
+# Page configuration
+st.set_page_config(page_title="📚 Personalized Study Scheduler", layout="wide")
+st.title("📚 Personalized Study Scheduler with Pomodoro Integration")
+
 # Initialize the scheduler
 if 'scheduler_started' not in st.session_state:
     start_scheduler()
     st.session_state.scheduler_started = True
-
-# Page configuration
-st.set_page_config(page_title="📚 Personalized Study Scheduler", layout="wide")
-st.title("📚 Personalized Study Scheduler with Pomodoro Integration")
 
 # Initialize session state for user authentication
 if 'logged_in' not in st.session_state:

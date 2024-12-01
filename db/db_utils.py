@@ -4,6 +4,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from .db_models import Base, User, Course, StudySession, StudyGroup, Resource, Feedback
 import bcrypt
 from datetime import datetime, timezone
+import nltk
+import os
+
+# Define the path where NLTK data is stored (same as in sentiment_analysis.py)
+NLTK_DATA_PATH = os.path.join(os.path.dirname(__file__), 'nltk_data')
+
+# Set the NLTK data path
+nltk.data.path.append(NLTK_DATA_PATH)
 
 # Initialize the database engine and session
 engine = create_engine('sqlite:///study_scheduler.db')  # Update if using PostgreSQL

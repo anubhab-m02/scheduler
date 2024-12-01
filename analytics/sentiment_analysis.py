@@ -1,9 +1,31 @@
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nrclex import NRCLex
+from textblob import download_corpora
+import streamlit as st
+import os
 
-# Download required NLTK data
-nltk.download('vader_lexicon')
+NLTK_DATA_PATH = os.path.join(os.path.dirname(__file__), 'nltk_data')
+
+os.makedirs(NLTK_DATA_PATH, exist_ok=True)
+
+nltk.data.path.append(NLTK_DATA_PATH)
+
+def download_nltk_data():
+    """
+    Download required NLTK data. Cached to prevent repeated downloads.
+    """
+    nltk.download('vader_lexicon', download_dir=NLTK_DATA_PATH)
+    nltk.download('punkt', download_dir=NLTK_DATA_PATH)
+
+def download_textblob_corpora():
+    """
+    Download TextBlob corpora. Cached to prevent repeated downloads.
+    """
+    download_corpora.download_all()
+
+download_nltk_data()
+download_textblob_corpora()
 
 def analyze_sentiment(text):
     """
